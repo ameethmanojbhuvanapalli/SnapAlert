@@ -1,16 +1,24 @@
 package com.example.application;
 
-import android.Manifest;
+import static android.Manifest.permission.CAMERA;
+import static android.Manifest.permission.SEND_SMS;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
@@ -24,20 +32,19 @@ import androidx.core.content.ContextCompat;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
 public class MainActivity extends AppCompatActivity implements ImageAnalysis.Analyzer, View.OnClickListener {
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private Button bCapture;
-    public static final int REQUEST_CAMERA = 101;
-    private static final int REQUEST_EXTERNAL_STORAGE = 102;
-    private static final String[] permstorage = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-    private static final String[] permcamera = {Manifest.permission.CAMERA};
+    private final String[] permissions = {CAMERA, SEND_SMS, WRITE_EXTERNAL_STORAGE};
+    private static final int REQUEST_CODE = 1;
+
     PreviewView previewView;
     private ImageCapture imageCapture;
     private MyThread myThread;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
             }
 
         }, getExecutor());
-        askPermissions();
+        verifyPermissions();
 
     }
     Executor getExecutor() {
@@ -96,12 +103,11 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
         image.close();
     }
 
-    @SuppressLint("RestrictedApi")
     @Override
     public void onClick(View view) {
         if (view.getId() == R.id.bCapture) {
             if(bCapture.getText().equals("Start")) {
-                myThread = new MyThread(imageCapture, getContentResolver(), getExecutor(), this);
+                myThread = new MyThread(imageCapture, getExecutor(), this);
                 myThread.start();
                 bCapture.setText("Stop");
                 bCapture.setBackgroundColor(Color.RED);
@@ -116,31 +122,54 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
             }
         }
     }
-    private void askPermissions() {
-        int storage = ActivityCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE);
-        int camera = ActivityCompat.checkSelfPermission(this,Manifest.permission.CAMERA);
-        int sms = ActivityCompat.checkSelfPermission(this,Manifest.permission.SEND_SMS);
-        if(camera != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this,permcamera, REQUEST_CAMERA);
-        }
-        if (storage != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, permstorage, REQUEST_EXTERNAL_STORAGE);
-        }
-        if (sms != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, permstorage, REQUEST_EXTERNAL_STORAGE);
+    private void verifyPermissions() {
+        for (String permission : Arrays.asList(permissions)) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE);
+                break;
+            }
         }
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode){
-            case REQUEST_CAMERA:
-                if(grantResults[0] != PackageManager.PERMISSION_GRANTED)
-                    Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show();
-            case REQUEST_EXTERNAL_STORAGE:
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED)
-                    Toast.makeText(this, "Storage permission is required", Toast.LENGTH_SHORT).show();
+
+        if (requestCode == REQUEST_CODE) {
+            boolean allPermissionsGranted = true;
+            boolean canSkipWriteExternalStorage = Build.VERSION.SDK_INT > Build.VERSION_CODES.R;
+
+            for (int i = 0; i < permissions.length; i++) {
+                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    if (!(permissions[i].equals(WRITE_EXTERNAL_STORAGE) && canSkipWriteExternalStorage)) {
+                        allPermissionsGranted = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!allPermissionsGranted) {
+                Toast.makeText(this, "Permissions are required", Toast.LENGTH_SHORT).show();
+                showPermissionDeniedDialog();
+            }
         }
+    }
+
+    private void showPermissionDeniedDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Permission denied")
+                .setMessage("These permissions are required to use the app. Please grant the permission in the app settings.")
+                .setPositiveButton("Go to settings", (dialog, which) -> {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    Uri uri = Uri.fromParts("package", getPackageName(), null);
+                    intent.setData(uri);
+                    startActivity(intent);
+                    finish();// Close the app
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    finish(); // Close the app
+                })
+                .show();
     }
 
 }

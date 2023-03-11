@@ -1,59 +1,56 @@
 package com.example.application;
 
 
-import android.content.ContentResolver;
-import android.content.ContentValues;
+import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.net.Uri;
-import android.os.Bundle;
-import android.provider.MediaStore;
+import android.media.MediaScannerConnection;
+import android.os.Environment;
 import android.telephony.SmsManager;
-import android.util.Base64;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
+import androidx.camera.core.ImageProxy;
 
-import java.io.ByteArrayOutputStream;
+import com.google.common.util.concurrent.SettableFuture;
+
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import com.google.common.util.concurrent.SettableFuture;
 
 
 public class Methods {
     private static final double K1 = 0.01;
     private static final double K2 = 0.03;
-    private void sendSms(Context context,Bitmap bitmap) {
+    private void sendSms() {
         SmsManager smsManager = SmsManager.getDefault();
         smsManager.sendTextMessage("+918688213068", null, "sms", null, null);
     }
-    protected Bitmap perform(Bitmap image1, Bitmap image2, Context context,String imgpath) throws IOException {
+    protected Bitmap perform(Bitmap image1, Bitmap image2, Context context){
         if(image2 != null)
         {
             int diff = compareImages(image1,image2);
             Toast.makeText(context,String.valueOf(diff), Toast.LENGTH_SHORT).show();
             if(diff > 5)
             {
-                sendSms(context,image1);
+                sendSms();
+                saveBitmap(image1,context);
+                //Upload to server
                 return image2;
             }
         }
-        Bitmap temp = image1;
-
-        // Delete the file associated with image1
-        File file = new File(imgpath);
-        if (file.delete())
-            Toast.makeText(context, "Deleted", Toast.LENGTH_SHORT).show();
-        return temp;
+        return image1;
     }
     private int compareImages(Bitmap image1, Bitmap image2) {
         if (image1 == null || image2 == null) {
@@ -108,60 +105,67 @@ public class Methods {
 
         double ssimAvg = sum / count;
         // Compute the percentage difference
-        int diffPercent = (int) (100.0 * (1.0 - ssimAvg));
 
-        return diffPercent;
+        return (int) (100.0 * (1.0 - ssimAvg));
     }
 
-    protected String getLatestPath() {
-        File directory = new File("/storage/emulated/0/Pictures");
-        File[] files = directory.listFiles((dir, name) -> name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".jpeg") || name.toLowerCase().endsWith(".png"));
+    public void saveBitmap(Bitmap bitmap,Context context) {
+        // Get the timestamp in a format that can be used in a file name
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+        String timeStamp = dateFormat.format(new Date());
 
-        if (files != null && files.length > 0) {
-            File latestFile = files[0];
+        // Get the storage directory for saving the image
+        File storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Snap Alert");
+        storageDir.mkdirs();
+        File file = new File(storageDir, "IMG_" + timeStamp + ".jpg");
 
-            for (int i = 1; i < files.length; i++) {
-                if (files[i].lastModified() > latestFile.lastModified()) {
-                    latestFile = files[i];
-                }
+        try {
+            // Compress the bitmap image and save it to the file
+            OutputStream outputStream = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+            outputStream.flush();
+            outputStream.close();
+
+            // Add the image to the gallery so it can be viewed in the Photos app
+            MediaScannerConnection.scanFile(context,
+                    new String[]{file.getAbsolutePath()},
+                    new String[]{"image/jpeg"}, null);
+
+            // Show a toast message to indicate that the image was saved
+            Toast.makeText(context, "Image saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    protected Future<Bitmap> capturePhoto(ImageCapture imageCapture, Executor executor,Activity mainActivity) {
+        final SettableFuture<Bitmap> future = SettableFuture.create();
+
+        imageCapture.takePicture(executor, new ImageCapture.OnImageCapturedCallback() {
+            @Override
+            public void onCaptureSuccess(@NonNull ImageProxy image) {
+                ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                byte[] bytes = new byte[buffer.remaining()];
+                buffer.get(bytes);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                future.set(bitmap);
+                image.close();
+                Toast.makeText(mainActivity, "Captured", Toast.LENGTH_SHORT).show();
             }
 
-            return latestFile.getAbsolutePath();
-        }
-        return null;
-    }
-    protected Future<String> capturePhoto(ImageCapture imageCapture, ContentResolver contentResolver, Executor executor, MainActivity mainActivity) {
-        long timestamp = System.currentTimeMillis();
-        ContentValues contentValues = new ContentValues();
-        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, timestamp);
-        contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
+            @Override
+            public void onError(@NonNull ImageCaptureException exception) {
+                future.setException(exception);
+            }
+        });
 
-        final SettableFuture<String> future = SettableFuture.create();
-
-        imageCapture.takePicture(
-                new ImageCapture.OutputFileOptions.Builder(
-                        contentResolver,
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        contentValues
-                ).build(),
-                executor,
-                new ImageCapture.OnImageSavedCallback() {
-                    @Override
-                    public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
-                        String path = getLatestPath();
-                        future.set(path);
-                        Toast.makeText(mainActivity, "Photo has been saved successfully.", Toast.LENGTH_SHORT).show();
-                    }
-
-                    @Override
-                    public void onError(@NonNull ImageCaptureException exception) {
-                        future.setException(exception);
-                        Toast.makeText(mainActivity, "Error saving photo: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                }
-        );
         return future;
     }
+
+
 
 }
 
