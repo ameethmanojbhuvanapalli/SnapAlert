@@ -18,6 +18,7 @@ import androidx.camera.core.ImageProxy;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -37,7 +38,7 @@ public class Methods {
         SmsManager smsManager = SmsManager.getDefault();
         smsManager.sendTextMessage("+918688213068", null, "sms", null, null);
     }
-    protected Bitmap perform(Bitmap image1, Bitmap image2, Context context){
+    protected Bitmap perform(Bitmap image1, Bitmap image2, Context context) throws IOException {
         if(image2 != null)
         {
             int diff = compareImages(image1,image2);
@@ -45,8 +46,10 @@ public class Methods {
             if(diff > 5)
             {
                 sendSms();
-                saveBitmap(image1,context);
-                //Upload to server
+                Toast.makeText(context, "Uploading", Toast.LENGTH_SHORT).show();
+                ImageUploader uploader = new ImageUploader(image1);
+                uploader.execute();
+                Toast.makeText(context, "uploaded", Toast.LENGTH_SHORT).show();
                 return image2;
             }
         }
@@ -109,7 +112,7 @@ public class Methods {
         return (int) (100.0 * (1.0 - ssimAvg));
     }
 
-    public void saveBitmap(Bitmap bitmap,Context context) {
+    public String saveBitmap(Bitmap bitmap,Context context) {
         // Get the timestamp in a format that can be used in a file name
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
         String timeStamp = dateFormat.format(new Date());
@@ -137,7 +140,7 @@ public class Methods {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        return file.getAbsolutePath();
 
     }
 
@@ -164,8 +167,6 @@ public class Methods {
 
         return future;
     }
-
-
 
 }
 

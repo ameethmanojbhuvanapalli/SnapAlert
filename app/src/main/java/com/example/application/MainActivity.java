@@ -3,6 +3,7 @@ package com.example.application;
 import static android.Manifest.permission.CAMERA;
 import static android.Manifest.permission.SEND_SMS;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+import static android.Manifest.permission.INTERNET;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
@@ -39,7 +40,7 @@ import java.util.concurrent.Executor;
 public class MainActivity extends AppCompatActivity implements ImageAnalysis.Analyzer, View.OnClickListener {
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private Button bCapture;
-    private final String[] permissions = {CAMERA, SEND_SMS, WRITE_EXTERNAL_STORAGE};
+    private final String[] permissions = {CAMERA, SEND_SMS, WRITE_EXTERNAL_STORAGE, INTERNET};
     private static final int REQUEST_CODE = 1;
 
     PreviewView previewView;
@@ -123,10 +124,15 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
         }
     }
     private void verifyPermissions() {
+        boolean isInternetPermissionGranted = ContextCompat.checkSelfPermission(this, INTERNET) == PackageManager.PERMISSION_GRANTED;
+        if (!isInternetPermissionGranted) {
+            ActivityCompat.requestPermissions(this, new String[]{INTERNET}, REQUEST_CODE);
+            return;
+        }
         for (String permission : Arrays.asList(permissions)) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE);
-                break;
+                return;
             }
         }
     }

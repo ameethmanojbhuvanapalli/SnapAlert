@@ -5,7 +5,7 @@ plugins {
 android {
     namespace 'com.example.application'
     compileSdk 33
-
+    useLibrary 'org.apache.http.legacy'
     defaultConfig {
         applicationId "com.example.application"
         minSdk 24

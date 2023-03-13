@@ -7,6 +7,7 @@ import android.widget.Toast;
 
 import androidx.camera.core.ImageCapture;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
@@ -46,10 +47,12 @@ public class MyThread extends Thread {
                 return;
             } catch (ExecutionException e) {
                 throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
-    private void process() throws ExecutionException, InterruptedException{
+    private void process() throws ExecutionException, InterruptedException, IOException {
         Toast.makeText(mainActivity, "Start", Toast.LENGTH_SHORT).show();
         Future<Bitmap> future = methods.capturePhoto(imageCapture, executor, mainActivity);
         Bitmap image1 = future.get();
