@@ -6,7 +6,6 @@ import static android.Manifest.permission.SEND_SMS;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
