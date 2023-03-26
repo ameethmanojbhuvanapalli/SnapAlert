@@ -1,9 +1,11 @@
 package com.example.application;
 
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -14,15 +16,19 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public class ImageUploader extends AsyncTask<Void, Void, String> {
 
     private static final String TAG = "ImageUploader";
-    private static final String UPLOAD_URL = "http://192.169.0.100:8080/Demo/UploadImage";
+    private static String UPLOAD_URL;
     private final Bitmap mBitmap;
+    private final Context context;
 
-    public ImageUploader(Bitmap bitmap) {
+    public ImageUploader(Bitmap bitmap,Context context) {
         mBitmap = bitmap;
+        this.context = context;
+        UPLOAD_URL = Config.getConfigValue("api_url",context);
     }
 
     @Override
@@ -62,7 +68,7 @@ public class ImageUploader extends AsyncTask<Void, Void, String> {
             int responseCode = urlConnection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 is = new BufferedInputStream(urlConnection.getInputStream());
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is,    "UTF-8"), 8);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8), 8);
                 StringBuilder sb = new StringBuilder();
 
                 String line;
@@ -95,5 +101,10 @@ public class ImageUploader extends AsyncTask<Void, Void, String> {
     @Override
     protected void onPostExecute(String result) {
         // Handle the server response here
+        if(result != null && result.equals("Image uploaded successfully!"))
+            Toast.makeText(context, "Uploaded", Toast.LENGTH_SHORT).show();
+        else
+            Toast.makeText(context, "Error while uploading: can't reach the servers", Toast.LENGTH_SHORT).show();
     }
+
 }

@@ -1,11 +1,12 @@
 package com.example.application;
 
 import static android.Manifest.permission.CAMERA;
+import static android.Manifest.permission.INTERNET;
 import static android.Manifest.permission.SEND_SMS;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
-import static android.Manifest.permission.INTERNET;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -33,7 +34,6 @@ import androidx.core.content.ContextCompat;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
@@ -46,6 +46,9 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
     PreviewView previewView;
     private ImageCapture imageCapture;
     private MyThread myThread;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -67,7 +70,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
 
         }, getExecutor());
         verifyPermissions();
-
     }
     Executor getExecutor() {
         return ContextCompat.getMainExecutor(this);
@@ -104,11 +106,12 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
         image.close();
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onClick(View view) {
         if (view.getId() == R.id.bCapture) {
             if(bCapture.getText().equals("Start")) {
-                myThread = new MyThread(imageCapture, getExecutor(), this);
+                myThread = new MyThread(imageCapture, getExecutor(),this);
                 myThread.start();
                 bCapture.setText("Stop");
                 bCapture.setBackgroundColor(Color.RED);
@@ -129,7 +132,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
             ActivityCompat.requestPermissions(this, new String[]{INTERNET}, REQUEST_CODE);
             return;
         }
-        for (String permission : Arrays.asList(permissions)) {
+        for (String permission : permissions) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE);
                 return;
