@@ -34,7 +34,7 @@ public class ImageUploader extends AsyncTask<Void, Void, String> {
     @Override
     protected String doInBackground(Void... voids) {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+        mBitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream);
         byte[] byteArray = stream.toByteArray();
 
         HttpURLConnection urlConnection = null;
