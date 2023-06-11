@@ -1,6 +1,7 @@
 package com.example.application;
 
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
@@ -23,6 +24,7 @@ public class ImageUploader extends AsyncTask<Void, Void, String> {
     private static final String TAG = "ImageUploader";
     private static String UPLOAD_URL;
     private final Bitmap mBitmap;
+    @SuppressLint("StaticFieldLeak")
     private final Context context;
 
     public ImageUploader(Bitmap bitmap,Context context) {
