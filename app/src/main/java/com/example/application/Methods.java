@@ -82,7 +82,6 @@ public class Methods {
         }
 
         double sum = 0.0;
-        int count = 0;
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -116,11 +115,10 @@ public class Methods {
                         / ((luma1 * luma1 + luma2 * luma2 + K1) * (variance1 + variance2 + K2));
 
                 sum += ssim;
-                count++;
             }
         }
 
-        double ssimAvg = sum / count;
+        double ssimAvg = sum / (height*width);
         // Compute the percentage difference
 
         return (int) (100.0 * (1.0 - ssimAvg));
